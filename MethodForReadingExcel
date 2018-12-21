@@ -1,20 +1,27 @@
-static void readExcel(string filePath)
+public static DataTable GetDataTableFromExcel(string path, bool hasHeader = true)
         {
-            string conStr = string.Format("Provider=Microsoft.ACE.OLEDB.12.0;Data Source={0};Extended Properties=\"Excel 12.0 Xml;HDR={0};IMEX=1;\"", filePath);
-            string sheetName = null;
-            System.Data.DataTable fileData = new System.Data.DataTable();
-            using (OleDbConnection connection = new OleDbConnection(conStr))
+            using (var pck = new OfficeOpenXml.ExcelPackage())
             {
-                connection.Open();
-                if (string.IsNullOrEmpty(sheetName))
+                using (var stream = File.OpenRead(path))
                 {
-                    sheetName = connection.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, null).Rows[0]["TABLE_NAME"].ToString();
+                    pck.Load(stream);
                 }
-                string selectCmd = string.Format("select * from [{0}]", sheetName);
-                using (OleDbCommand command = new OleDbCommand(selectCmd, connection))
-                using (OleDbDataAdapter adapter = new OleDbDataAdapter(command))
+                var ws = pck.Workbook.Worksheets.First();
+                DataTable tbl = new DataTable();
+                foreach (var firstRowCell in ws.Cells[1, 1, 1, ws.Dimension.End.Column])
                 {
-                    adapter.Fill(fileData);
+                    tbl.Columns.Add(hasHeader ? firstRowCell.Text : string.Format("Column {0}", firstRowCell.Start.Column));
                 }
+                var startRow = hasHeader ? 2 : 1;
+                for (int rowNum = startRow; rowNum <= ws.Dimension.End.Row; rowNum++)
+                {
+                    var wsRow = ws.Cells[rowNum, 1, rowNum, ws.Dimension.End.Column];
+                    DataRow row = tbl.Rows.Add();
+                    foreach (var cell in wsRow)
+                    {
+                        row[cell.Start.Column - 1] = cell.Text;
+                    }
+                }
+                return tbl;
             }
         }
