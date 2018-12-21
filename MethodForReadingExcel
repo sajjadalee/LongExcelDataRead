@@ -1,0 +1,20 @@
+static void readExcel(string filePath)
+        {
+            string conStr = string.Format("Provider=Microsoft.ACE.OLEDB.12.0;Data Source={0};Extended Properties=\"Excel 12.0 Xml;HDR={0};IMEX=1;\"", filePath);
+            string sheetName = null;
+            System.Data.DataTable fileData = new System.Data.DataTable();
+            using (OleDbConnection connection = new OleDbConnection(conStr))
+            {
+                connection.Open();
+                if (string.IsNullOrEmpty(sheetName))
+                {
+                    sheetName = connection.GetOleDbSchemaTable(OleDbSchemaGuid.Columns, null).Rows[0]["TABLE_NAME"].ToString();
+                }
+                string selectCmd = string.Format("select * from [{0}]", sheetName);
+                using (OleDbCommand command = new OleDbCommand(selectCmd, connection))
+                using (OleDbDataAdapter adapter = new OleDbDataAdapter(command))
+                {
+                    adapter.Fill(fileData);
+                }
+            }
+        }
